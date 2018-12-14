@@ -77,8 +77,12 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
             let result = cx.resolver.borrow_mut()
                                     .with_scope(id,
                 |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP,
-                                                    &path_str, is_val)
+                    resolver.resolve_str_path_error(
+                        cx.tcx.global_arena(),
+                        DUMMY_SP,
+                        &path_str,
+                        is_val
+                    )
             });
 
             if let Ok(result) = result {
@@ -130,7 +134,12 @@ impl<'a, 'tcx, 'rcx> LinkCollector<'a, 'tcx, 'rcx> {
             let ty = cx.resolver.borrow_mut()
                                 .with_scope(id,
                 |resolver| {
-                    resolver.resolve_str_path_error(DUMMY_SP, &path, false)
+                    resolver.resolve_str_path_error(
+                        cx.tcx.global_arena(),
+                        DUMMY_SP,
+                        &path,
+                        false
+                    )
             })?;
             match ty.def {
                 Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {

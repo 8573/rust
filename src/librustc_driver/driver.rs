@@ -4,7 +4,7 @@ use rustc::hir::lowering::lower_crate;
 use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
+use rustc::ty::{self, AllArenas, Resolutions, TyCtxt, GlobalCtxt};
 use rustc::traits;
 use rustc::util::common::{install_panic_hook, time, ErrorReported};
 use rustc::util::profiling::ProfileCategory;
@@ -39,6 +39,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::Symbol;
 use syntax_pos::{FileName, hygiene};
 use syntax_ext;
+use arena::SyncDroplessArena;
 
 use serialize::json;
 
@@ -165,6 +166,10 @@ pub fn compile_input(
             ::rustc_codegen_utils::link::find_crate_name(Some(sess), &krate.attrs, input);
         install_panic_hook();
 
+        let arenas = AllArenas::new();
+        let hir_arenas = hir::Arenas::default();
+        let mut global_ctxt = None;
+
         let ExpansionResult {
             expanded_crate,
             defs,
@@ -176,6 +181,8 @@ pub fn compile_input(
                 sess,
                 &cstore,
                 krate,
+                &arenas.interner,
+                &hir_arenas,
                 registry,
                 &crate_name,
                 addl_plugins,
@@ -281,6 +288,7 @@ pub fn compile_input(
             analysis,
             resolutions,
             &mut arenas,
+            &mut global_ctxt,
             &crate_name,
             &outputs,
             |tcx, analysis, rx, result| {
@@ -527,7 +535,7 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub out_dir: Option<&'a Path>,
     pub out_file: Option<&'a Path>,
     pub expanded_crate: Option<&'a ast::Crate>,
-    pub hir_crate: Option<&'a hir::Crate>,
+    pub hir_crate: Option<&'a hir::Crate<'tcx>>,
     pub hir_map: Option<&'a hir_map::Map<'tcx>>,
     pub resolutions: Option<&'a Resolutions>,
     pub analysis: Option<&'a ty::CrateAnalysis>,
@@ -601,7 +609,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         analysis: &'a ty::CrateAnalysis,
         resolutions: &'a Resolutions,
         krate: &'a ast::Crate,
-        hir_crate: &'a hir::Crate,
+        hir_crate: &'a hir::Crate<'tcx>,
         output_filenames: &'a OutputFilenames,
         crate_name: &'a str,
     ) -> Self {
@@ -625,7 +633,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
         out_dir: &'a Option<PathBuf>,
         out_file: &'a Option<PathBuf>,
         krate: Option<&'a ast::Crate>,
-        hir_crate: &'a hir::Crate,
+        hir_crate: &'a hir::Crate<'tcx>,
         analysis: &'a ty::CrateAnalysis,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         crate_name: &'a str,
@@ -711,18 +719,18 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 // For continuing compilation after a parsed crate has been
 // modified
 
-pub struct ExpansionResult {
+pub struct ExpansionResult<'a> {
     pub expanded_crate: ast::Crate,
     pub defs: hir_map::Definitions,
     pub analysis: ty::CrateAnalysis,
     pub resolutions: Resolutions,
-    pub hir_forest: hir_map::Forest,
+    pub hir_forest: hir_map::Forest<'a>,
 }
 
-pub struct InnerExpansionResult<'a> {
+pub struct InnerExpansionResult<'a, 'b> {
     pub expanded_crate: ast::Crate,
     pub resolver: Resolver<'a>,
-    pub hir_forest: hir_map::Forest,
+    pub hir_forest: hir_map::Forest<'b>,
 }
 
 /// Run the "early phases" of the compiler: initial `cfg` processing,
@@ -732,16 +740,18 @@ pub struct InnerExpansionResult<'a> {
 /// standard library and prelude, and name resolution.
 ///
 /// Returns `None` if we're aborting after handling -W help.
-pub fn phase_2_configure_and_expand<F>(
-    sess: &Session,
-    cstore: &CStore,
+pub fn phase_2_configure_and_expand<'a, F>(
+    sess: &'a Session,
+    cstore: &'a CStore,
     krate: ast::Crate,
+    arena: &'a SyncDroplessArena,
+    arenas: &'a hir::Arenas,
     registry: Option<Registry>,
     crate_name: &str,
     addl_plugins: Option<Vec<String>>,
     make_glob_map: MakeGlobMap,
     after_expand: F,
-) -> Result<ExpansionResult, CompileIncomplete>
+) -> Result<ExpansionResult<'a>, CompileIncomplete>
 where
     F: FnOnce(&ast::Crate) -> CompileResult,
 {
@@ -756,6 +766,8 @@ where
         sess,
         cstore,
         krate,
+        arena,
+        arenas,
         registry,
         crate_name,
         addl_plugins,
@@ -798,10 +810,12 @@ where
 
 /// Same as phase_2_configure_and_expand, but doesn't let you keep the resolver
 /// around
-pub fn phase_2_configure_and_expand_inner<'a, F>(
-    sess: &'a Session,
-    cstore: &'a CStore,
+pub fn phase_2_configure_and_expand_inner<'a, 'b: 'a, F>(
+    sess: &'b Session,
+    cstore: &'b CStore,
     mut krate: ast::Crate,
+    arena: &'b SyncDroplessArena,
+    arenas: &'b hir::Arenas,
     registry: Option<Registry>,
     crate_name: &str,
     addl_plugins: Option<Vec<String>>,
@@ -809,7 +823,7 @@ pub fn phase_2_configure_and_expand_inner<'a, F>(
     resolver_arenas: &'a ResolverArenas<'a>,
     crate_loader: &'a mut CrateLoader<'a>,
     after_expand: F,
-) -> Result<InnerExpansionResult<'a>, CompileIncomplete>
+) -> Result<InnerExpansionResult<'a, 'b>, CompileIncomplete>
 where
     F: FnOnce(&ast::Crate) -> CompileResult,
 {
@@ -1132,7 +1146,15 @@ where
         }
     };
     let hir_forest = time(sess, "lowering ast -> hir", || {
-        let hir_crate = lower_crate(sess, cstore, &dep_graph, &krate, &mut resolver);
+        let hir_crate = lower_crate(
+            sess,
+            cstore,
+            arena,
+            arenas,
+            &dep_graph,
+            &krate,
+            &mut resolver
+        );
 
         if sess.opts.debugging_opts.hir_stats {
             hir_stats::print_hir_stats(&hir_crate);
@@ -1190,7 +1212,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     hir_map: hir_map::Map<'tcx>,
     analysis: ty::CrateAnalysis,
     resolutions: Resolutions,
-    arenas: &'tcx mut AllArenas<'tcx>,
+    arenas: &'tcx AllArenas<'tcx>,
+    global_ctxt: &'tcx mut Option<GlobalCtxt<'tcx>>,
     name: &str,
     output_filenames: &OutputFilenames,
     f: F,
@@ -1238,6 +1261,7 @@ where
         local_providers,
         extern_providers,
         arenas,
+        global_ctxt,
         resolutions,
         hir_map,
         query_result_on_disk_cache,

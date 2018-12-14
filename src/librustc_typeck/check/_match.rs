@@ -2,6 +2,7 @@ use check::{FnCtxt, Expectation, Diverges, Needs};
 use check::coercion::CoerceMany;
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::ptr::P;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -9,7 +10,6 @@ use rustc::traits::ObligationCauseCode;
 use rustc::ty::{self, Ty, TypeFoldable};
 use syntax::ast;
 use syntax::source_map::Spanned;
-use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
 use util::nodemap::FxHashMap;
@@ -704,9 +704,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     }
 
     fn check_pat_struct(&self,
-                        pat: &'gcx hir::Pat,
-                        qpath: &hir::QPath,
-                        fields: &'gcx [Spanned<hir::FieldPat>],
+                        pat: &'gcx hir::Pat<'gcx>,
+                        qpath: &hir::QPath<'gcx>,
+                        fields: &'gcx [Spanned<hir::FieldPat<'gcx>>],
                         etc: bool,
                         expected: Ty<'tcx>,
                         def_bm: ty::BindingMode) -> Ty<'tcx>
@@ -733,8 +733,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     }
 
     fn check_pat_path(&self,
-                      pat: &hir::Pat,
-                      qpath: &hir::QPath,
+                      pat: &hir::Pat<'gcx>,
+                      qpath: &hir::QPath<'gcx>,
                       expected: Ty<'tcx>) -> Ty<'tcx>
     {
         let tcx = self.tcx;
@@ -768,9 +768,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     }
 
     fn check_pat_tuple_struct(&self,
-                              pat: &hir::Pat,
-                              qpath: &hir::QPath,
-                              subpats: &'gcx [P<hir::Pat>],
+                              pat: &hir::Pat<'gcx>,
+                              qpath: &hir::QPath<'gcx>,
+                              subpats: &'gcx [P<'gcx, hir::Pat<'gcx>>],
                               ddpos: Option<usize>,
                               expected: Ty<'tcx>,
                               def_bm: ty::BindingMode) -> Ty<'tcx>

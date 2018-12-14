@@ -32,7 +32,7 @@ pub enum CastTy<'tcx> {
 }
 
 /// Cast Kind. See RFC 401 (or librustc_typeck/check/cast.rs)
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub enum CastKind {
     CoercionCast,
     PtrPtrCast,

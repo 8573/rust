@@ -217,7 +217,8 @@ impl PpSourceMode {
             PpmTyped => {
                 let control = &driver::CompileController::basic();
                 let codegen_backend = ::get_codegen_backend(sess);
-                let mut arenas = AllArenas::new();
+                let arenas = AllArenas::new();
+                let mut global_ctxt = None;
                 abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
                                                                  control,
                                                                  sess,
@@ -225,7 +226,8 @@ impl PpSourceMode {
                                                                  hir_map.clone(),
                                                                  analysis.clone(),
                                                                  resolutions.clone(),
-                                                                 &mut arenas,
+                                                                 &arenas,
+                                                                 &mut global_ctxt,
                                                                  id,
                                                                  output_filenames,
                                                                  |tcx, _, _, _| {
@@ -1128,7 +1130,8 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
 
     let control = &driver::CompileController::basic();
     let codegen_backend = ::get_codegen_backend(sess);
-    let mut arenas = AllArenas::new();
+    let arenas = AllArenas::new();
+    let mut global_ctxt = None;
     abort_on_err(driver::phase_3_run_analysis_passes(&*codegen_backend,
                                                      control,
                                                      sess,
@@ -1136,7 +1139,8 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                      hir_map.clone(),
                                                      analysis.clone(),
                                                      resolutions.clone(),
-                                                     &mut arenas,
+                                                     &arenas,
+                                                     &mut global_ctxt,
                                                      crate_name,
                                                      output_filenames,
                                                      |tcx, _, _, _| {

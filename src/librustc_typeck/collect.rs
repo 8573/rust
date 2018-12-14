@@ -159,7 +159,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
-    pub fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
 }
@@ -323,7 +323,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
     /// bounds for a type parameter `X` if `X::Foo` is used.
     fn type_parameter_bounds_in_generics(
         &self,
-        ast_generics: &hir::Generics,
+        ast_generics: &hir::Generics<'tcx>,
         param_id: ast::NodeId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
@@ -1581,8 +1581,8 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(
 /// `resolve_lifetime::early_bound_lifetimes`.
 fn early_bound_lifetimes_from_generics<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    generics: &'a hir::Generics,
-) -> impl Iterator<Item = &'a hir::GenericParam> + Captures<'tcx> {
+    generics: &'a hir::Generics<'tcx>,
+) -> impl Iterator<Item = &'a hir::GenericParam<'tcx>> + Captures<'tcx> {
     generics
         .params
         .iter()
@@ -1993,7 +1993,7 @@ pub enum SizedByDefault {
 pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
     astconv: &dyn AstConv<'gcx, 'tcx>,
     param_ty: Ty<'tcx>,
-    ast_bounds: &[hir::GenericBound],
+    ast_bounds: &[hir::GenericBound<'gcx>],
     sized_by_default: SizedByDefault,
     span: Span,
 ) -> Bounds<'tcx> {
@@ -2052,7 +2052,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
 fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx, 'tcx>,
     param_ty: Ty<'tcx>,
-    bound: &hir::GenericBound,
+    bound: &hir::GenericBound<'tcx>,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     match *bound {
         hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
@@ -2076,7 +2076,7 @@ fn predicates_from_bound<'tcx>(
 fn compute_sig_of_foreign_fn_decl<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    decl: &hir::FnDecl,
+    decl: &hir::FnDecl<'tcx>,
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {

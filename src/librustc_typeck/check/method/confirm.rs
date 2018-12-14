@@ -20,8 +20,8 @@ use std::ops::Deref;
 struct ConfirmContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
-    self_expr: &'gcx hir::Expr,
-    call_expr: &'gcx hir::Expr,
+    self_expr: &'gcx hir::Expr<'gcx>,
+    call_expr: &'gcx hir::Expr<'gcx>,
 }
 
 impl<'a, 'gcx, 'tcx> Deref for ConfirmContext<'a, 'gcx, 'tcx> {
@@ -40,11 +40,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn confirm_method(
         &self,
         span: Span,
-        self_expr: &'gcx hir::Expr,
-        call_expr: &'gcx hir::Expr,
+        self_expr: &'gcx hir::Expr<'gcx>,
+        call_expr: &'gcx hir::Expr<'gcx>,
         unadjusted_self_ty: Ty<'tcx>,
         pick: probe::Pick<'tcx>,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'gcx>,
     ) -> ConfirmResult<'tcx> {
         debug!(
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
@@ -61,8 +61,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
            span: Span,
-           self_expr: &'gcx hir::Expr,
-           call_expr: &'gcx hir::Expr)
+           self_expr: &'gcx hir::Expr<'gcx>,
+           call_expr: &'gcx hir::Expr<'gcx>)
            -> ConfirmContext<'a, 'gcx, 'tcx> {
         ConfirmContext {
             fcx,
@@ -76,7 +76,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         &mut self,
         unadjusted_self_ty: Ty<'tcx>,
         pick: probe::Pick<'tcx>,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'gcx>,
     ) -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
@@ -299,7 +299,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
     fn instantiate_method_substs(
         &mut self,
         pick: &probe::Pick<'tcx>,
-        seg: &hir::PathSegment,
+        seg: &hir::PathSegment<'gcx>,
         parent_substs: &Substs<'tcx>,
     ) -> &'tcx Substs<'tcx> {
         // Determine the values for the generic parameters of the method.

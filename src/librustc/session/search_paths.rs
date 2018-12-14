@@ -9,7 +9,7 @@ pub struct SearchPath {
     pub files: Vec<PathBuf>,
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Hash)]
+#[derive(Eq, PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Hash, HashStable)]
 pub enum PathKind {
     Native,
     Crate,

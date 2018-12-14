@@ -14,7 +14,7 @@ use rustc::hir::def_id::LocalDefId;
 use rustc::mir::BorrowKind;
 use syntax_pos::Span;
 
-impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
+impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
     type Output = Expr<'tcx>;
 
     fn make_mirror<'a, 'gcx>(self, cx: &mut Cx<'a, 'gcx, 'tcx>) -> Expr<'tcx> {
@@ -69,7 +69,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 }
 
 fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                    hir_expr: &'tcx hir::Expr,
+                                    hir_expr: &'tcx hir::Expr<'tcx>,
                                     mut expr: Expr<'tcx>,
                                     adjustment: &Adjustment<'tcx>)
                                     -> Expr<'tcx> {
@@ -831,7 +831,7 @@ fn user_substs_applied_to_def(
 
 fn method_callee<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
-    expr: &hir::Expr,
+    expr: &hir::Expr<'tcx>,
     span: Span,
     overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
 ) -> Expr<'tcx> {
@@ -904,7 +904,7 @@ fn convert_arm<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>, arm: &'tcx hir::Arm)
 }
 
 fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                     expr: &'tcx hir::Expr,
+                                     expr: &'tcx hir::Expr<'tcx>,
                                      def: Def)
                                      -> ExprKind<'tcx> {
     let substs = cx.tables().node_substs(expr.hir_id);
@@ -966,7 +966,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 }
 
 fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                               expr: &'tcx hir::Expr,
+                               expr: &'tcx hir::Expr<'tcx>,
                                def: Def)
                                -> ExprKind<'tcx> {
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
@@ -1116,7 +1116,7 @@ fn bin_op(op: hir::BinOpKind) -> BinOp {
 }
 
 fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                       expr: &'tcx hir::Expr,
+                                       expr: &'tcx hir::Expr<'tcx>,
                                        args: Vec<ExprRef<'tcx>>)
                                        -> ExprKind<'tcx> {
     let fun = method_callee(cx, expr, expr.span, None);
@@ -1130,7 +1130,7 @@ fn overloaded_operator<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
 fn overloaded_place<'a, 'gcx, 'tcx>(
     cx: &mut Cx<'a, 'gcx, 'tcx>,
-    expr: &'tcx hir::Expr,
+    expr: &'tcx hir::Expr<'tcx>,
     place_ty: Ty<'tcx>,
     overloaded_callee: Option<(DefId, &'tcx Substs<'tcx>)>,
     args: Vec<ExprRef<'tcx>>,
@@ -1177,7 +1177,7 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
 }
 
 fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
-                                   closure_expr: &'tcx hir::Expr,
+                                   closure_expr: &'tcx hir::Expr<'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {

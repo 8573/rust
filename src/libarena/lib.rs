@@ -23,9 +23,11 @@
 #![allow(deprecated)]
 
 extern crate alloc;
+extern crate smallvec;
 extern crate rustc_data_structures;
 
 use rustc_data_structures::sync::MTLock;
+use smallvec::SmallVec;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -151,6 +153,22 @@ impl<T> TypedArena<T> {
         }
     }
 
+    #[inline]
+    fn alloc_raw_slice(&self, len: usize) -> *mut T {
+        assert!(mem::size_of::<T>() != 0);
+        assert!(len != 0);
+
+        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
+        let at_least_bytes = len * mem::size_of::<T>();
+        if available_capacity_bytes < at_least_bytes {
+            self.grow(len);
+        }
+
+        let start_ptr = self.ptr.get();
+        self.ptr.set(unsafe { start_ptr.add(len) });
+        start_ptr
+    }
+
     /// Allocates a slice of objects that are copied into the `TypedArena`, returning a mutable
     /// reference to it. Will panic if passed a zero-sized types.
     ///
@@ -163,21 +181,39 @@ impl<T> TypedArena<T> {
     where
         T: Copy,
     {
-        assert!(mem::size_of::<T>() != 0);
-        assert!(slice.len() != 0);
+        unsafe {
+            let len = slice.len();
+            let start_ptr = self.alloc_raw_slice(len);
+            slice.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            slice::from_raw_parts_mut(start_ptr, len)
+        }
+    }
 
-        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
-        let at_least_bytes = slice.len() * mem::size_of::<T>();
-        if available_capacity_bytes < at_least_bytes {
-            self.grow(slice.len());
+    pub fn alloc_from_iter<I: IntoIterator<Item=T>>(&self, iter: I) -> &[T] where T: Clone {
+        assert!(mem::size_of::<T>() != 0);
+        let vec: Vec<_> = iter.into_iter().collect();
+        if vec.is_empty() {
+            return &[]
+        }
+        let vec2 = vec.clone();
+        for a in vec {
+            self.alloc(a);
+        }
+        let result = &vec2[..] as *const [T];
+        mem::forget(vec2);// FIXME: Remove
+        unsafe {
+            return &*result;
         }
 
+        // Move the content to the arena by copying and them forgetting the content of the SmallVec
         unsafe {
-            let start_ptr = self.ptr.get();
-            let arena_slice = slice::from_raw_parts_mut(start_ptr, slice.len());
-            self.ptr.set(start_ptr.add(arena_slice.len()));
-            arena_slice.copy_from_slice(slice);
-            arena_slice
+            let len = vec.len();
+            let start_ptr = self.alloc_raw_slice(len);
+            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            mem::forget(vec);// FIXME: Remove
+            //mem::forget(vec.drain());
+
+            slice::from_raw_parts_mut(start_ptr, len)
         }
     }
 

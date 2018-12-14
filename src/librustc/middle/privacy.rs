@@ -9,7 +9,7 @@ use std::fmt;
 use syntax::ast::NodeId;
 
 // Accessibility levels, sorted in ascending order
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, HashStable)]
 pub enum AccessLevel {
     // Superset of Reachable used to mark impl Trait items.
     ReachableFromImplTrait,

@@ -20,6 +20,7 @@ use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::ptr::P;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -27,7 +28,6 @@ use rustc_data_structures::indexed_vec::Idx;
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
-use syntax::ptr::P;
 use syntax_pos::Span;
 
 #[derive(Clone, Debug)]

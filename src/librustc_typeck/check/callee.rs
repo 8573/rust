@@ -445,8 +445,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
 #[derive(Debug)]
 pub struct DeferredCallResolution<'gcx: 'tcx, 'tcx> {
-    call_expr: &'gcx hir::Expr,
-    callee_expr: &'gcx hir::Expr,
+    call_expr: &'gcx hir::Expr<'gcx>,
+    callee_expr: &'gcx hir::Expr<'gcx>,
     adjusted_ty: Ty<'tcx>,
     adjustments: Vec<Adjustment<'tcx>>,
     fn_sig: ty::FnSig<'tcx>,

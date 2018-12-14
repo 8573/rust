@@ -6,7 +6,6 @@ use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::PrintState;
-use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -14,6 +13,7 @@ use syntax_pos::{self, BytePos, FileName};
 use hir;
 use hir::{PatKind, GenericBound, TraitBoundModifier, RangeEnd};
 use hir::{GenericParam, GenericParamKind, GenericArg};
+use hir::ptr::P;
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -23,11 +23,11 @@ use std::vec;
 
 pub enum AnnNode<'a> {
     Name(&'a ast::Name),
-    Block(&'a hir::Block),
-    Item(&'a hir::Item),
+    Block(&'a hir::Block<'a>),
+    Item(&'a hir::Item<'a>),
     SubItem(ast::NodeId),
-    Expr(&'a hir::Expr),
-    Pat(&'a hir::Pat),
+    Expr(&'a hir::Expr<'a>),
+    Pat(&'a hir::Pat<'a>),
 }
 
 pub enum Nested {
@@ -57,7 +57,7 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
-impl PpAnn for hir::Crate {
+impl PpAnn for hir::Crate<'_> {
     fn try_fetch_item(&self, item: ast::NodeId) -> Option<&hir::Item> {
         Some(self.item(item))
     }
@@ -953,7 +953,7 @@ impl<'a> State<'a> {
             hir::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(ti.ident,
                                            Some(bounds),
-                                           default.as_ref().map(|ty| &**ty))?;
+                                           default.as_ref().map(|ty| &***ty))?;
             }
         }
         self.ann.post(self, AnnNode::SubItem(ti.id))
@@ -1075,7 +1075,7 @@ impl<'a> State<'a> {
                         self.print_expr_as_cond(&i)?;
                         self.s.space()?;
                         self.print_expr(&then)?;
-                        self.print_else(e.as_ref().map(|e| &**e))
+                        self.print_else(e.as_ref().map(|e| &***e))
                     }
                     // "final else"
                     hir::ExprKind::Block(ref b, _) => {
@@ -1359,7 +1359,7 @@ impl<'a> State<'a> {
                 self.print_type(&ty)?;
             }
             hir::ExprKind::If(ref test, ref blk, ref elseopt) => {
-                self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e))?;
+                self.print_if(&test, &blk, elseopt.as_ref().map(|e| &***e))?;
             }
             hir::ExprKind::While(ref test, ref blk, opt_label) => {
                 if let Some(label) = opt_label {

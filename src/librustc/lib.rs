@@ -66,6 +66,8 @@
 
 #![warn(elided_lifetimes_in_paths)]
 
+#![allow(warnings)]
+
 extern crate arena;
 #[macro_use] extern crate bitflags;
 extern crate core;
@@ -79,6 +81,7 @@ extern crate libc;
 extern crate polonius_engine;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
+#[macro_use] extern crate rustc_macros;
 extern crate serialize;
 extern crate parking_lot;
 extern crate rustc_errors as errors;
@@ -168,6 +171,7 @@ pub mod util {
 #[doc(hidden)]
 mod rustc {
     pub use lint;
+    pub use ich;
 }
 
 // FIXME(#27438): right now the unit tests of librustc don't refer to any actual

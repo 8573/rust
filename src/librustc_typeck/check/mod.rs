@@ -90,6 +90,7 @@ use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::hir::ptr::P;
 use middle::lang_items;
 use namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, InferResult, RegionVariableOrigin};
@@ -116,7 +117,6 @@ use syntax_pos::{self, BytePos, Span, MultiSpan};
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::ptr::P;
 use syntax::source_map::{DUMMY_SP, original_sp};
 use syntax::symbol::{Symbol, LocalInternedString, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
@@ -763,7 +763,7 @@ fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// redirecting to the owning function.
 fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              id: ast::NodeId)
-                             -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl>)>
+                             -> Option<(hir::BodyId, Option<&'tcx hir::FnDecl<'tcx>>)>
 {
     match tcx.hir().get(id) {
         Node::Item(item) => {
@@ -2410,13 +2410,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                            .register_bound(self, self.param_env, ty, def_id, cause);
     }
 
-    pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_t: &hir::Ty<'gcx>) -> Ty<'tcx> {
         let t = AstConv::ast_ty_to_ty(self, ast_t);
         self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
         t
     }
 
-    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'gcx>) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
@@ -3269,10 +3269,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     // Checks a method call.
     fn check_method_call(&self,
-                         expr: &'gcx hir::Expr,
-                         segment: &hir::PathSegment,
+                         expr: &'gcx hir::Expr<'gcx>,
+                         segment: &hir::PathSegment<'gcx>,
                          span: Span,
-                         args: &'gcx [hir::Expr],
+                         args: &'gcx [hir::Expr<'gcx>],
                          expected: Expectation<'tcx>,
                          needs: Needs) -> Ty<'tcx> {
         let rcvr = &args[0];
@@ -3756,8 +3756,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_struct_fields_on_error(&self,
-                                    fields: &'gcx [hir::Field],
-                                    base_expr: &'gcx Option<P<hir::Expr>>) {
+                                    fields: &'gcx [hir::Field<'gcx>],
+                                    base_expr: &'gcx Option<P<'gcx, hir::Expr<'gcx>>>) {
         for field in fields {
             self.check_expr(&field.expr);
         }
@@ -3767,7 +3767,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_struct_path(&self,
-                             qpath: &QPath,
+                             qpath: &QPath<'gcx>,
                              node_id: ast::NodeId)
                              -> Option<(&'tcx ty::VariantDef,  Ty<'tcx>)> {
         let path_span = match *qpath {
@@ -3823,11 +3823,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_expr_struct(&self,
-                         expr: &hir::Expr,
+                         expr: &hir::Expr<'gcx>,
                          expected: Expectation<'tcx>,
-                         qpath: &QPath,
-                         fields: &'gcx [hir::Field],
-                         base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
+                         qpath: &QPath<'gcx>,
+                         fields: &'gcx [hir::Field<'gcx>],
+                         base_expr: &'gcx Option<P<'gcx, hir::Expr<'gcx>>>) -> Ty<'tcx>
     {
         // Find the relevant variant
         let (variant, adt_ty) =
@@ -4303,7 +4303,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => {
-                self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
+                self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &***e),
                                      expr.span, expected)
             }
             ExprKind::While(ref cond, ref body, _) => {
@@ -4603,7 +4603,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Finish resolving a path in a struct expression or pattern `S::A { .. }` if necessary.
     // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(&self,
-                                    qpath: &QPath,
+                                    qpath: &QPath<'gcx>,
                                     path_span: Span,
                                     node_id: ast::NodeId)
                                     -> (Def, Ty<'tcx>)
@@ -4637,10 +4637,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Resolve associated value path into a base type and associated constant or method definition.
     // The newly resolved definition is written into `type_dependent_defs`.
     pub fn resolve_ty_and_def_ufcs<'b>(&self,
-                                       qpath: &'b QPath,
+                                       qpath: &'b QPath<'gcx>,
                                        node_id: ast::NodeId,
                                        span: Span)
-                                       -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
+                                       -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment<'gcx>])
     {
         debug!("resolve_ty_and_def_ufcs: qpath={:?} node_id={:?} span={:?}", qpath, node_id, span);
         let (ty, qself, item_segment) = match *qpath {
@@ -4979,7 +4979,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn suggest_mismatched_types_on_tail(
         &self,
         err: &mut DiagnosticBuilder<'tcx>,
-        expression: &'gcx hir::Expr,
+        expression: &'gcx hir::Expr<'gcx>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         cause_span: Span,
@@ -5090,7 +5090,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// type.
     fn suggest_missing_return_type(&self,
                                    err: &mut DiagnosticBuilder<'tcx>,
-                                   fn_decl: &hir::FnDecl,
+                                   fn_decl: &hir::FnDecl<'gcx>,
                                    expected: Ty<'tcx>,
                                    found: Ty<'tcx>,
                                    can_suggest: bool) {
@@ -5171,7 +5171,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // Instantiates the given path, which must refer to an item with the given
     // number of type parameters and type.
     pub fn instantiate_value_path(&self,
-                                  segments: &[hir::PathSegment],
+                                  segments: &[hir::PathSegment<'gcx>],
                                   self_ty: Option<Ty<'tcx>>,
                                   def: Def,
                                   span: Span,

@@ -519,9 +519,9 @@ impl<'a, 'tcx, 'rcx> AutoTraitFinder<'a, 'tcx, 'rcx> {
     // * Fn bounds are handled specially - instead of leaving it as 'T: Fn(), <T as Fn::Output> =
     // K', we use the dedicated syntax 'T: Fn() -> K'
     // * We explcitly add a '?Sized' bound if we didn't find any 'Sized' predicates for a type
-    fn param_env_to_generics<'b, 'c, 'cx>(
+    fn param_env_to_generics<'cx>(
         &self,
-        tcx: TyCtxt<'b, 'c, 'cx>,
+        tcx: TyCtxt<'_, 'tcx, 'cx>,
         did: DefId,
         param_env: ty::ParamEnv<'cx>,
         type_generics: ty::Generics,

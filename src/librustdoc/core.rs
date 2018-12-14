@@ -4,6 +4,7 @@ use rustc::session::{self, config};
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
 use rustc::hir::def::Def;
 use rustc::hir::{self, HirVec};
+use rustc::hir::ptr::P;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, AllArenas};
@@ -20,7 +21,6 @@ use syntax::ast::{self, Ident, NodeId};
 use syntax::source_map;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
-use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax_pos::DUMMY_SP;
 use errors::{self, FatalError};
@@ -167,13 +167,14 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
                           def_ctor: &F,
                           real_name: &Option<Ident>,
                           generics: &ty::Generics,
-    ) -> hir::Ty
+    ) -> hir::Ty<'tcx>
     where F: Fn(DefId) -> Def {
         let path = get_path_for_type(self.tcx, def_id, def_ctor);
         let mut segments = path.segments.into_vec();
         let last = segments.pop().expect("segments were empty");
 
         segments.push(hir::PathSegment::new(
+            self.tcx.global_arena(),
             real_name.unwrap_or(last.ident),
             None,
             None,
@@ -184,18 +185,21 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
         let new_path = hir::Path {
             span: path.span,
             def: path.def,
-            segments: HirVec::from_vec(segments),
+            segments: P::from_slice(self.tcx.global_arena(), &segments),
         };
 
         hir::Ty {
             id: ast::DUMMY_NODE_ID,
-            node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
+            node: hir::TyKind::Path(hir::QPath::Resolved(
+                None,
+                P::alloc(self.tcx.global_arena(), new_path)
+            )),
             span: DUMMY_SP,
             hir_id: hir::DUMMY_HIR_ID,
         }
     }
 
-    pub fn generics_to_path_params(&self, generics: ty::Generics) -> hir::GenericArgs {
+    pub fn generics_to_path_params(&self, generics: ty::Generics) -> hir::GenericArgs<'tcx> {
         let mut args = vec![];
 
         for param in generics.params.iter() {
@@ -220,22 +224,22 @@ impl<'a, 'tcx, 'rcx> DocContext<'a, 'tcx, 'rcx> {
         }
 
         hir::GenericArgs {
-            args: HirVec::from_vec(args),
+            args: P::from_slice(self.tcx.global_arena(), &args),
             bindings: HirVec::new(),
             parenthesized: false,
         }
     }
 
-    pub fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
+    pub fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty<'tcx> {
         debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
         hir::Ty {
             id: ast::DUMMY_NODE_ID,
             node: hir::TyKind::Path(hir::QPath::Resolved(
                 None,
-                P(hir::Path {
+                P::alloc(self.tcx.global_arena(), hir::Path {
                     span: DUMMY_SP,
                     def: Def::TyParam(param.def_id),
-                    segments: HirVec::from_vec(vec![
+                    segments: P::from_slice(self.tcx.global_arena(), &[
                         hir::PathSegment::from_ident(Ident::from_interned_str(param.name))
                     ]),
                 }),
@@ -444,10 +448,15 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
         let mut crate_loader = CrateLoader::new(&sess, &cstore, &name);
 
+        let arenas = AllArenas::new();
+        let hir_arenas = hir::Arenas::default();
+        let mut global_ctxt = None;
         let resolver_arenas = resolve::Resolver::arenas();
         let result = driver::phase_2_configure_and_expand_inner(&sess,
                                                         &cstore,
                                                         krate,
+                                                        &arenas.interner,
+                                                        &hir_arenas,
                                                         None,
                                                         &name,
                                                         None,
@@ -479,7 +488,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map.clone()) } else { None },
         };
 
-        let mut arenas = AllArenas::new();
         let hir_map = hir_map::map_crate(&sess, &*cstore, &mut hir_forest, &defs);
         let output_filenames = driver::build_output_filenames(&input,
                                                             &None,
@@ -495,7 +503,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                                         hir_map,
                                                         analysis,
                                                         resolutions,
-                                                        &mut arenas,
+                                                        &arenas,
+                                                        &mut global_ctxt,
                                                         &name,
                                                         &output_filenames,
                                                         |tcx, _, _, result| {

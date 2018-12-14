@@ -186,7 +186,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      dfcx_loans: &LoanDataFlow<'b, 'tcx>,
                                      move_data: &move_data::FlowedMoveData<'c, 'tcx>,
                                      all_loans: &[Loan<'tcx>],
-                                     body: &hir::Body) {
+                                     body: &hir::Body<'tcx>) {
     debug!("check_loans(body id={})", body.value.id);
 
     let def_id = bccx.tcx.hir().body_owner_def_id(body.id());

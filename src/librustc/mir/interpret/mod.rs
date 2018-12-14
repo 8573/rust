@@ -40,7 +40,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::num::NonZeroU32;
 
 /// Uniquely identifies a specific constant or static.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.
@@ -258,7 +258,7 @@ impl fmt::Display for AllocId {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable, HashStable)]
 pub enum AllocKind<'tcx> {
     /// The alloc id is used as a function pointer
     Function(Instance<'tcx>),

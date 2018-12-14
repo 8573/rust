@@ -51,6 +51,7 @@ pub enum ImportDirectiveSubclass<'a> {
     ExternCrate {
         source: Option<Name>,
         target: Ident,
+        no_link: bool,
     },
     MacroUse,
 }
@@ -1210,17 +1211,27 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             if is_good_import || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
-                    if let Some(def_id) = def.opt_def_id() {
-                        if !def_id.is_local() && def_id.krate != CrateNum::BuiltinMacros {
-                            self.cstore.export_macros_untracked(def_id.krate);
+                    let exp = if let NameBindingKind::Import { directive , .. } = binding.kind {
+                        match directive.subclass {
+                            ImportDirectiveSubclass::ExternCrate { no_link: true, .. } => false,
+                            _ => true
                         }
+                    } else {
+                        true
+                    };
+                    if exp {
+                        if let Some(def_id) = def.opt_def_id() {
+                            if !def_id.is_local() && def_id.krate != CrateNum::BuiltinMacros {
+                                self.cstore.export_macros_untracked(def_id.krate);
+                            }
+                        }
+                        reexports.push(Export {
+                            ident: ident.modern(),
+                            def: def,
+                            span: binding.span,
+                            vis: binding.vis,
+                        });
                     }
-                    reexports.push(Export {
-                        ident: ident.modern(),
-                        def: def,
-                        span: binding.span,
-                        vis: binding.vis,
-                    });
                 }
             }
 

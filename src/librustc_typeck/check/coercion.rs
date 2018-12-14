@@ -54,6 +54,7 @@ use check::{FnCtxt, Needs};
 use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::hir::ptr::P;
 use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
@@ -65,7 +66,6 @@ use rustc::ty::relate::RelateResult;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 use syntax::feature_gate;
-use syntax::ptr::P;
 use syntax_pos;
 
 struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -813,10 +813,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 cause: &ObligationCause<'tcx>,
                                 exprs: &[E],
                                 prev_ty: Ty<'tcx>,
-                                new: &hir::Expr,
+                                new: &hir::Expr<'gcx>,
                                 new_ty: Ty<'tcx>)
                                 -> RelateResult<'tcx, Ty<'tcx>>
-        where E: AsCoercionSite
+        where E: AsCoercionSite<'gcx>
     {
         let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
         let new_ty = self.resolve_type_vars_with_obligations(new_ty);
@@ -982,7 +982,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// let final_ty = coerce.complete(fcx);
 /// ```
 pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
-    where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,
+    where 'gcx: 'tcx, E: 'exprs + AsCoercionSite<'gcx>,
 {
     expected_ty: Ty<'tcx>,
     final_ty: Option<Ty<'tcx>>,
@@ -992,17 +992,17 @@ pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
 
 /// The type of a `CoerceMany` that is storing up the expressions into
 /// a buffer. We use this in `check/mod.rs` for things like `break`.
-pub type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'gcx, P<hir::Expr>>;
+pub type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'gcx, P<'gcx, hir::Expr<'gcx>>>;
 
 enum Expressions<'gcx, 'exprs, E>
-    where E: 'exprs + AsCoercionSite,
+    where E: 'exprs + AsCoercionSite<'gcx>,
 {
-    Dynamic(Vec<&'gcx hir::Expr>),
+    Dynamic(Vec<&'gcx hir::Expr<'gcx>>),
     UpFront(&'exprs [E]),
 }
 
 impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
-    where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,
+    where 'gcx: 'tcx, E: 'exprs + AsCoercionSite<'gcx>,
 {
     /// The usual case; collect the set of expressions dynamically.
     /// If the full set of coercion sites is known before hand,
@@ -1265,38 +1265,38 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
 
 /// Something that can be converted into an expression to which we can
 /// apply a coercion.
-pub trait AsCoercionSite {
-    fn as_coercion_site(&self) -> &hir::Expr;
+pub trait AsCoercionSite<'gcx> {
+    fn as_coercion_site(&self) -> &hir::Expr<'gcx>;
 }
 
-impl AsCoercionSite for hir::Expr {
-    fn as_coercion_site(&self) -> &hir::Expr {
+impl<'gcx> AsCoercionSite<'gcx> for hir::Expr<'gcx> {
+    fn as_coercion_site(&self) -> &hir::Expr<'gcx> {
         self
     }
 }
 
-impl AsCoercionSite for P<hir::Expr> {
-    fn as_coercion_site(&self) -> &hir::Expr {
+impl<'gcx> AsCoercionSite<'gcx> for P<'gcx, hir::Expr<'gcx>> {
+    fn as_coercion_site(&self) -> &hir::Expr<'gcx> {
         self
     }
 }
 
-impl<'a, T> AsCoercionSite for &'a T
-    where T: AsCoercionSite
+impl<'gcx, 'a, T> AsCoercionSite<'gcx> for &'a T
+    where T: AsCoercionSite<'gcx>
 {
-    fn as_coercion_site(&self) -> &hir::Expr {
+    fn as_coercion_site(&self) -> &hir::Expr<'gcx> {
         (**self).as_coercion_site()
     }
 }
 
-impl AsCoercionSite for ! {
-    fn as_coercion_site(&self) -> &hir::Expr {
+impl<'gcx> AsCoercionSite<'gcx> for ! {
+    fn as_coercion_site(&self) -> &hir::Expr<'gcx> {
         unreachable!()
     }
 }
 
-impl AsCoercionSite for hir::Arm {
-    fn as_coercion_site(&self) -> &hir::Expr {
+impl<'gcx> AsCoercionSite<'gcx> for hir::Arm<'gcx> {
+    fn as_coercion_site(&self) -> &hir::Expr<'gcx> {
         &self.body
     }
 }

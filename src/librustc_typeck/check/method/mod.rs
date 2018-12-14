@@ -176,10 +176,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// * `self_expr`:             the self expression (`foo`)
     pub fn lookup_method(&self,
                          self_ty: Ty<'tcx>,
-                         segment: &hir::PathSegment,
+                         segment: &hir::PathSegment<'gcx>,
                          span: Span,
-                         call_expr: &'gcx hir::Expr,
-                         self_expr: &'gcx hir::Expr)
+                         call_expr: &'gcx hir::Expr<'gcx>,
+                         self_expr: &'gcx hir::Expr<'gcx>)
                          -> Result<MethodCallee<'tcx>, MethodError<'tcx>> {
         debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",
                segment.ident,
@@ -249,7 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     span: Span,
                     method_name: ast::Ident,
                     self_ty: Ty<'tcx>,
-                    call_expr: &'gcx hir::Expr,
+                    call_expr: &'gcx hir::Expr<'gcx>,
                     scope: ProbeScope)
                     -> probe::PickResult<'tcx> {
         let mode = probe::Mode::MethodCall;

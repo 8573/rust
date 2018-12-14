@@ -1026,8 +1026,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline]
+    pub fn global_arena(self) -> &'gcx SyncDroplessArena {
+        &self.gcx.global_interners.arena
+    }
+
     #[inline(always)]
-    pub fn hir(self) -> &'a hir_map::Map<'gcx> {
+    pub fn hir(self) -> &'gcx hir_map::Map<'gcx> {
         &self.hir_map
     }
 
@@ -1138,7 +1143,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   cstore: &'tcx CrateStoreDyn,
                                   local_providers: ty::query::Providers<'tcx>,
                                   extern_providers: ty::query::Providers<'tcx>,
-                                  arenas: &'tcx mut AllArenas<'tcx>,
+                                  arenas: &'tcx AllArenas<'tcx>,
+                                  global_ctxt: &'tcx mut Option<GlobalCtxt<'tcx>>,
                                   resolutions: ty::Resolutions,
                                   hir: hir_map::Map<'tcx>,
                                   on_disk_query_result_cache: query::OnDiskCache<'tcx>,
@@ -1199,7 +1205,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                      Lrc::new(StableVec::new(v)));
         }
 
-        arenas.global_ctxt = Some(GlobalCtxt {
+        *global_ctxt = Some(GlobalCtxt {
             sess: s,
             cstore,
             global_arenas: &arenas.global,
@@ -1244,7 +1250,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             output_filenames: Arc::new(output_filenames.clone()),
         });
 
-        let gcx = arenas.global_ctxt.as_ref().unwrap();
+        let gcx = global_ctxt.as_ref().unwrap();
 
         sync::assert_send_val(&gcx);
 

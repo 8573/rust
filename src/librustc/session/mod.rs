@@ -1359,7 +1359,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
     handler.emit(&MultiSpan::new(), msg, errors::Level::Warning);
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub enum CompileIncomplete {
     Stopped,
     Errored(ErrorReported),
