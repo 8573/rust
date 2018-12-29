@@ -154,13 +154,18 @@ impl<T> TypedArena<T> {
     }
 
     #[inline]
+    fn can_allocate(&self, len: usize) -> bool {
+        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
+        let at_least_bytes = len * mem::size_of::<T>();
+        available_capacity_bytes >= at_least_bytes
+    }
+
+    #[inline]
     fn alloc_raw_slice(&self, len: usize) -> *mut T {
         assert!(mem::size_of::<T>() != 0);
         assert!(len != 0);
 
-        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
-        let at_least_bytes = len * mem::size_of::<T>();
-        if available_capacity_bytes < at_least_bytes {
+        if !self.can_allocate(len) {
             self.grow(len);
         }
 
@@ -191,7 +196,39 @@ impl<T> TypedArena<T> {
 
     pub fn alloc_from_iter<I: IntoIterator<Item=T>>(&self, iter: I) -> &[T] where T: Clone {
         assert!(mem::size_of::<T>() != 0);
-        let vec: Vec<_> = iter.into_iter().collect();
+        let mut iter = iter.into_iter();
+        let size_hint = iter.size_hint();
+
+        match size_hint {
+            (min, Some(max)) if min == max => {
+                if min == 0 {
+                    return &[];
+                }
+
+                if !self.can_allocate(min) {
+                    self.grow(min);
+                }
+
+                let slice = self.ptr.get();
+
+                unsafe {
+                    let mut ptr = self.ptr.get();
+                    for _ in 0..min {
+                        // Write into uninitialized memory.
+                        ptr::write(ptr, iter.next().unwrap());
+                        // Advance the pointer.
+                        ptr = ptr.offset(1);
+                        // Update the pointer per iteration so if `iter.next()` panics
+                        // we destroy the correct amount
+                        self.ptr.set(ptr);
+                    }
+                    return slice::from_raw_parts_mut(slice, min);
+                }
+            }
+            _ => (),
+        }
+
+        let vec: Vec<_> = iter.collect();
         if vec.is_empty() {
             return &[]
         }
