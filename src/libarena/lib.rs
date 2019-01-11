@@ -196,39 +196,7 @@ impl<T> TypedArena<T> {
 
     pub fn alloc_from_iter<I: IntoIterator<Item=T>>(&self, iter: I) -> &[T] where T: Clone {
         assert!(mem::size_of::<T>() != 0);
-        let mut iter = iter.into_iter();
-        let size_hint = iter.size_hint();
-
-        match size_hint {
-            (min, Some(max)) if min == max => {
-                if min == 0 {
-                    return &[];
-                }
-
-                if !self.can_allocate(min) {
-                    self.grow(min);
-                }
-
-                let slice = self.ptr.get();
-
-                unsafe {
-                    let mut ptr = self.ptr.get();
-                    for _ in 0..min {
-                        // Write into uninitialized memory.
-                        ptr::write(ptr, iter.next().unwrap());
-                        // Advance the pointer.
-                        ptr = ptr.offset(1);
-                        // Update the pointer per iteration so if `iter.next()` panics
-                        // we destroy the correct amount
-                        self.ptr.set(ptr);
-                    }
-                    return slice::from_raw_parts_mut(slice, min);
-                }
-            }
-            _ => (),
-        }
-
-        let vec: Vec<_> = iter.collect();
+        let vec: Vec<_> = iter.into_iter().collect();
         if vec.is_empty() {
             return &[]
         }
