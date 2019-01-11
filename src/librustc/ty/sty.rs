@@ -2066,7 +2066,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Hash, HashStable,
+         RustcEncodable, RustcDecodable, Eq, PartialEq, Ord, PartialOrd)]
 /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to `Evaluated` if the
 /// code is monomorphic enough for that.
 pub enum LazyConst<'tcx> {

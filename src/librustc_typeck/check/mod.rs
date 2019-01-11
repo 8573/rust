@@ -4930,13 +4930,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given a function block's `NodeId`, return its `FnDecl` if it exists, or `None` otherwise.
-    fn get_parent_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, ast::Ident)> {
+    fn get_parent_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl<'gcx>, ast::Ident)> {
         let parent = self.tcx.hir().get(self.tcx.hir().get_parent(blk_id));
         self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
-    fn get_node_fn_decl(&self, node: Node) -> Option<(hir::FnDecl, ast::Ident, bool)> {
+    fn get_node_fn_decl<'hir>(
+        &self,
+        node: Node<'hir>
+    ) -> Option<(hir::FnDecl<'hir>, ast::Ident, bool)> {
         match node {
             Node::Item(&hir::Item {
                 ident, node: hir::ItemKind::Fn(ref decl, ..), ..
@@ -4962,7 +4965,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// Given a `NodeId`, return the `FnDecl` of the method it is enclosed by and whether a
     /// suggestion can be made, `None` otherwise.
-    pub fn get_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl, bool)> {
+    pub fn get_fn_decl(&self, blk_id: ast::NodeId) -> Option<(hir::FnDecl<'gcx>, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {

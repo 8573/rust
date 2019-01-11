@@ -1444,7 +1444,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     pub fn prohibit_generics<'a, T: IntoIterator<Item = &'a hir::PathSegment<'gcx>>>(
         &self,
         segments: T
-    )
+    ) -> bool
     where
         'gcx: 'a
     {

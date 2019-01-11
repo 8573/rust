@@ -25,7 +25,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         &self,
         region: Region<'tcx>,
         br: &ty::BoundRegion,
-    ) -> Option<(&hir::Ty, &hir::FnDecl)> {
+    ) -> Option<(&'gcx hir::Ty<'gcx>, &'gcx hir::FnDecl<'gcx>)> {
         if let Some(anon_reg) = self.tcx.is_suitable_region(region) {
             let def_id = anon_reg.def_id;
             if let Some(node_id) = self.tcx.hir().as_local_node_id(def_id) {
@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         &self,
         arg: &'gcx hir::Ty,
         br: &ty::BoundRegion,
-    ) -> Option<(&'gcx hir::Ty)> {
+    ) -> Option<(&'gcx hir::Ty<'gcx>)> {
         let mut nested_visitor = FindNestedTypeVisitor {
             tcx: self.tcx,
             bound_region: *br,

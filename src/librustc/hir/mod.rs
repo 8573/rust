@@ -125,7 +125,9 @@ mod item_local_id_inner {
     /// an "item-like" to something else can be implement by a `Vec` instead of a
     /// tree or hash map.
     newtype_index! {
-        pub struct ItemLocalId { .. }
+        pub struct ItemLocalId {
+            derive [HashStable]
+        }
     }
 }
 

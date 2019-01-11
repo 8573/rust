@@ -789,6 +789,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 
 newtype_index! {
     pub struct UserTypeAnnotationIndex {
+        derive [HashStable]
         DEBUG_FORMAT = "UserTypeAnnotation({})",
         const START_INDEX = 0,
     }
@@ -841,7 +842,7 @@ impl CanonicalUserTypeAnnotation<'gcx> {
 /// A user-given type annotation attached to a constant.  These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UserTypeAnnotation<'tcx> {
     Ty(Ty<'tcx>),
 

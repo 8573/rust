@@ -69,15 +69,6 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for CrateNum {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::ItemLocalId {
-    #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        self.as_u32().hash_stable(hcx, hasher);
-    }
-}
-
 impl<'a> ToStableHashKey<StableHashingContext<'a>>
 for hir::ItemLocalId {
     type KeyType = hir::ItemLocalId;
