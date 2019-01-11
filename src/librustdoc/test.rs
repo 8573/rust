@@ -1,3 +1,4 @@
+use arena::SyncDroplessArena;
 use errors::{self, FatalError};
 use errors::emitter::ColorConfig;
 use rustc_data_structures::sync::Lrc;
@@ -92,11 +93,15 @@ pub fn run(mut options: Options) -> isize {
                     FatalError.raise();
                 }
             };
+        let arena = SyncDroplessArena::default();
+        let hir_arenas = hir::Arenas::default();
         let driver::ExpansionResult { defs, mut hir_forest, .. } = {
             phase_2_configure_and_expand(
                 &sess,
                 &cstore,
                 krate,
+                &arena,
+                &hir_arenas,
                 None,
                 "rustdoc-test",
                 None,

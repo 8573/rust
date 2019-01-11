@@ -543,9 +543,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         substs: &'tcx Substs<'tcx>,
         needle_fr: RegionVid,
-        last_segment: &'hir hir::PathSegment,
+        last_segment: &'hir hir::PathSegment<'hir>,
         counter: &mut usize,
-        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty)>,
+        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<RegionName> {
         // Did the user give explicit arguments? (e.g., `Foo<..>`)
         let args = last_segment.args.as_ref()?;
@@ -589,8 +589,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         substs: &'tcx Substs<'tcx>,
         needle_fr: RegionVid,
-        args: &'hir hir::GenericArgs,
-        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty)>,
+        args: &'hir hir::GenericArgs<'hir>,
+        search_stack: &mut Vec<(Ty<'tcx>, &'hir hir::Ty<'hir>)>,
     ) -> Option<&'hir hir::Lifetime> {
         for (kind, hir_arg) in substs.iter().zip(&args.args) {
             match (kind.unpack(), hir_arg) {

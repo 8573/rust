@@ -182,8 +182,8 @@ read_tuple!(A, B);
 read_tuple!(A, B, C);
 
 macro_rules! read_hir {
-    ($t:ty) => {
-        impl<'tcx> DepGraphRead for &'tcx $t {
+    ($($t:tt)*) => {
+        impl<'tcx> DepGraphRead for &'tcx $($t)*<'tcx> {
             fn read(&self, tcx: TyCtxt) {
                 tcx.hir().read(self.id);
             }

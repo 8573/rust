@@ -17,7 +17,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHashe
 /// A Visitor that walks over the HIR and collects Nodes into a HIR map
 pub(super) struct NodeCollector<'a, 'hir> {
     /// The crate
-    krate: &'hir Crate,
+    krate: &'hir Crate<'hir>,
 
     /// Source map
     source_map: &'a SourceMap,

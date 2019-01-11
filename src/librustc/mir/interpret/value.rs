@@ -5,7 +5,7 @@ use crate::ty::{Ty, layout::{HasDataLayout, Size}};
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
 /// Represents the result of a raw const operation, pre-validation.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub struct RawConst<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
@@ -15,7 +15,8 @@ pub struct RawConst<'tcx> {
 
 /// Represents a constant value in Rust. Scalar and ScalarPair are optimizations which
 /// matches the LocalValue optimizations for easy conversions between Value and ConstValue.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord,
+         RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub enum ConstValue<'tcx> {
     /// Used only for types with layout::abi::Scalar ABI and ZSTs
     ///
@@ -74,7 +75,8 @@ impl<'tcx> ConstValue<'tcx> {
 /// `memory::Allocation`. It is in many ways like a small chunk of a `Allocation`, up to 8 bytes in
 /// size. Like a range of bytes in an `Allocation`, a `Scalar` can either represent the raw bytes
 /// of a simple value or a pointer into another `Allocation`
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd,
+         RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub enum Scalar<Tag=(), Id=AllocId> {
     /// The raw bytes of a simple value.
     Bits {

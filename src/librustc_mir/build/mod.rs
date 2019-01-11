@@ -622,7 +622,7 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 struct ArgInfo<'gcx>(Ty<'gcx>,
                      Option<Span>,
-                     Option<&'gcx hir::Pat>,
+                     Option<&'gcx hir::Pat<'gcx>>,
                      Option<ImplicitSelfKind>);
 
 fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,

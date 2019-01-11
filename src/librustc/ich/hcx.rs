@@ -62,12 +62,12 @@ pub enum NodeIdHashingMode {
 /// We could also just store a plain reference to the hir::Crate but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
-struct BodyResolver<'gcx>(&'gcx hir::Crate);
+struct BodyResolver<'gcx>(&'gcx hir::Crate<'gcx>);
 
 impl<'gcx> BodyResolver<'gcx> {
     // Return a reference to the hir::Body with the given BodyId.
     // DOES NOT DO ANY TRACKING, use carefully.
-    fn body(self, id: hir::BodyId) -> &'gcx hir::Body {
+    fn body(self, id: hir::BodyId) -> &'gcx hir::Body<'gcx> {
         self.0.body(id)
     }
 }

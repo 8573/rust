@@ -12,6 +12,7 @@ use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use errors::DiagnosticId;
 
+#[derive(HashStable)]
 pub struct LibFeatures {
     // A map from feature to stabilisation version.
     pub stable: FxHashMap<Symbol, Symbol>,

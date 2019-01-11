@@ -29,8 +29,10 @@ pub use rustc::hir::def::{Namespace, PerNS};
 use self::TypeParameters::*;
 use self::RibKind::*;
 
+use arena::SyncDroplessArena;
+
 use rustc::hir::map::{Definitions, DefCollector};
-use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
+use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str, HirVec};
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::lint;
@@ -1645,23 +1647,25 @@ impl<'a, 'b: 'a> ty::DefIdTree for &'a Resolver<'b> {
 
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
-impl<'a> hir::lowering::Resolver for Resolver<'a> {
+impl<'a, 'hir> hir::lowering::Resolver<'hir> for Resolver<'a> {
     fn resolve_hir_path(
         &mut self,
+        arena: &'hir SyncDroplessArena,
         path: &ast::Path,
         is_value: bool,
-    ) -> hir::Path {
-        self.resolve_hir_path_cb(path, is_value,
+    ) -> hir::Path<'hir> {
+        self.resolve_hir_path_cb(arena, path, is_value,
                                  |resolver, span, error| resolve_error(resolver, span, error))
     }
 
     fn resolve_str_path(
         &mut self,
+        arena: &'hir SyncDroplessArena,
         span: Span,
         crate_root: Option<&str>,
         components: &[&str],
         is_value: bool
-    ) -> hir::Path {
+    ) -> hir::Path<'hir> {
         let segments = iter::once(keywords::PathRoot.ident())
             .chain(
                 crate_root.into_iter()
@@ -1675,7 +1679,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             segments,
         };
 
-        self.resolve_hir_path(&path, is_value)
+        self.resolve_hir_path(arena, &path, is_value)
     }
 
     fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
@@ -1696,8 +1700,13 @@ impl<'a> Resolver<'a> {
     /// isn't something that can be returned because it can't be made to live that long,
     /// and also it's a private type. Fortunately rustdoc doesn't need to know the error,
     /// just that an error occurred.
-    pub fn resolve_str_path_error(&mut self, span: Span, path_str: &str, is_value: bool)
-        -> Result<hir::Path, ()> {
+    pub fn resolve_str_path_error<'hir>(
+        &mut self,
+        arena: &'hir SyncDroplessArena,
+        span: Span,
+        path_str: &str,
+        is_value: bool
+    ) -> Result<hir::Path<'hir>, ()> {
         use std::iter;
         let mut errored = false;
 
@@ -1721,7 +1730,7 @@ impl<'a> Resolver<'a> {
                     .collect(),
             }
         };
-        let path = self.resolve_hir_path_cb(&path, is_value, |_, _, _| errored = true);
+        let path = self.resolve_hir_path_cb(arena, &path, is_value, |_, _, _| errored = true);
         if errored || path.def == Def::Err {
             Err(())
         } else {
@@ -1730,12 +1739,13 @@ impl<'a> Resolver<'a> {
     }
 
     /// resolve_hir_path, but takes a callback in case there was an error
-    fn resolve_hir_path_cb<F>(
+    fn resolve_hir_path_cb<'hir, F>(
         &mut self,
+        arena: &'hir SyncDroplessArena,
         path: &ast::Path,
         is_value: bool,
         error_callback: F,
-    ) -> hir::Path
+    ) -> hir::Path<'hir>
         where F: for<'c, 'b> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
     {
         let namespace = if is_value { ValueNS } else { TypeNS };
@@ -1769,7 +1779,7 @@ impl<'a> Resolver<'a> {
         hir::Path {
             span,
             def,
-            segments: segments.into(),
+            segments: HirVec::from_iter(arena, segments),
         }
     }
 

@@ -45,6 +45,7 @@ impl LangItem {
     }
 }
 
+#[derive(HashStable)]
 pub struct LanguageItems {
     pub items: Vec<Option<DefId>>,
     pub missing: Vec<LangItem>,

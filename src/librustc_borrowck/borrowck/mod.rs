@@ -247,7 +247,7 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
 
     owner_def_id: DefId,
 
-    body: &'tcx hir::Body,
+    body: &'tcx hir::Body<'tcx>,
 
     used_mut_nodes: RefCell<FxHashSet<HirId>>,
 

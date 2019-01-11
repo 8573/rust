@@ -176,7 +176,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     pub fn ast_path_substs_for_ty(&self,
         span: Span,
         def_id: DefId,
-        item_segment: &hir::PathSegment)
+        item_segment: &hir::PathSegment<'gcx>)
         -> &'tcx Substs<'tcx>
     {
         let (substs, assoc_bindings, _) = item_segment.with_generic_args(|generic_args| {
@@ -433,10 +433,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         parent_substs: &[Kind<'tcx>],
         has_self: bool,
         self_ty: Option<Ty<'tcx>>,
-        args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs>, bool),
-        provided_kind: impl Fn(&GenericParamDef, &GenericArg) -> Kind<'tcx>,
+        args_for_def_id: impl Fn(DefId) -> (Option<&'b GenericArgs<'gcx>>, bool),
+        provided_kind: impl Fn(&GenericParamDef, &GenericArg<'gcx>) -> Kind<'tcx>,
         inferred_kind: impl Fn(Option<&[Kind<'tcx>]>, &GenericParamDef, bool) -> Kind<'tcx>,
-    ) -> &'tcx Substs<'tcx> {
+    ) -> &'tcx Substs<'tcx>
+    where
+        'gcx: 'b
+    {
         // Collect the segments of the path; we need to substitute arguments
         // for parameters throughout the entire path (wherever there are
         // generic parameters).
@@ -549,7 +552,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     fn create_substs_for_ast_path(&self,
         span: Span,
         def_id: DefId,
-        generic_args: &hir::GenericArgs,
+        generic_args: &hir::GenericArgs<'gcx>,
         infer_types: bool,
         self_ty: Option<Ty<'tcx>>)
         -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>)
@@ -683,7 +686,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T=X>`
     /// are disallowed. Otherwise, they are pushed onto the vector given.
     pub fn instantiate_mono_trait_ref(&self,
-        trait_ref: &hir::TraitRef,
+        trait_ref: &hir::TraitRef<'gcx>,
         self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>
     {
@@ -711,7 +714,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     /// The given trait ref must actually be a trait.
     pub(super) fn instantiate_poly_trait_ref_inner(&self,
-        trait_ref: &hir::TraitRef,
+        trait_ref: &hir::TraitRef<'gcx>,
         self_ty: Ty<'tcx>,
         poly_projections: &mut Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>,
         speculative: bool)
@@ -747,7 +750,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     pub fn instantiate_poly_trait_ref(&self,
-        poly_trait_ref: &hir::PolyTraitRef,
+        poly_trait_ref: &hir::PolyTraitRef<'gcx>,
         self_ty: Ty<'tcx>,
         poly_projections: &mut Vec<(ty::PolyProjectionPredicate<'tcx>, Span)>)
         -> (ty::PolyTraitRef<'tcx>, Option<Vec<Span>>)
@@ -760,7 +763,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                   span: Span,
                                   trait_def_id: DefId,
                                   self_ty: Ty<'tcx>,
-                                  trait_segment: &hir::PathSegment)
+                                  trait_segment: &hir::PathSegment<'gcx>)
                                   -> ty::TraitRef<'tcx>
     {
         let (substs, assoc_bindings, _) =
@@ -777,7 +780,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         span: Span,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        trait_segment: &hir::PathSegment,
+        trait_segment: &hir::PathSegment<'gcx>,
     ) -> (&'tcx Substs<'tcx>, Vec<ConvertedBinding<'tcx>>, Option<Vec<Span>>) {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})",
                trait_segment);
@@ -934,7 +937,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     fn ast_path_to_ty(&self,
         span: Span,
         did: DefId,
-        item_segment: &hir::PathSegment)
+        item_segment: &hir::PathSegment<'gcx>)
         -> Ty<'tcx>
     {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
@@ -954,7 +957,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     fn conv_object_ty_poly_trait_ref(&self,
         span: Span,
-        trait_bounds: &[hir::PolyTraitRef],
+        trait_bounds: &[hir::PolyTraitRef<'gcx>],
         lifetime: &hir::Lifetime)
         -> Ty<'tcx>
     {
@@ -1288,7 +1291,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                      span: Span,
                                      ty: Ty<'tcx>,
                                      ty_path_def: Def,
-                                     item_segment: &hir::PathSegment)
+                                     item_segment: &hir::PathSegment<'gcx>)
                                      -> (Ty<'tcx>, Def)
     {
         let tcx = self.tcx();
@@ -1406,8 +1409,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                    span: Span,
                    opt_self_ty: Option<Ty<'tcx>>,
                    item_def_id: DefId,
-                   trait_segment: &hir::PathSegment,
-                   item_segment: &hir::PathSegment)
+                   trait_segment: &hir::PathSegment<'gcx>,
+                   item_segment: &hir::PathSegment<'gcx>)
                    -> Ty<'tcx>
     {
         let tcx = self.tcx();
@@ -1438,8 +1441,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         self.normalize_ty(span, tcx.mk_projection(item_def_id, trait_ref.substs))
     }
 
-    pub fn prohibit_generics<'a, T: IntoIterator<Item = &'a hir::PathSegment>>(
-            &self, segments: T) -> bool {
+    pub fn prohibit_generics<'a, T: IntoIterator<Item = &'a hir::PathSegment<'gcx>>>(
+        &self,
+        segments: T
+    ) -> bool
+    where
+        'gcx: 'a
+    {
         let mut has_err = false;
         for segment in segments {
             segment.with_generic_args(|generic_args| {
@@ -1618,7 +1626,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     // Check a type `Path` and convert it to a `Ty`.
     pub fn def_to_ty(&self,
                      opt_self_ty: Option<Ty<'tcx>>,
-                     path: &hir::Path,
+                     path: &hir::Path<'gcx>,
                      permit_variants: bool)
                      -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -1718,7 +1726,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
     /// Parses the programmer's textual representation of a type into our
     /// internal notion of a type.
-    pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty<'gcx>) -> Ty<'tcx> {
         debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})",
                ast_ty.id, ast_ty, ast_ty.node);
 
@@ -1849,7 +1857,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     pub fn ty_of_arg(&self,
-                     ty: &hir::Ty,
+                     ty: &hir::Ty<'gcx>,
                      expected_ty: Option<Ty<'tcx>>)
                      -> Ty<'tcx>
     {
@@ -1865,7 +1873,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     pub fn ty_of_fn(&self,
                     unsafety: hir::Unsafety,
                     abi: abi::Abi,
-                    decl: &hir::FnDecl)
+                    decl: &hir::FnDecl<'gcx>)
                     -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
@@ -1973,8 +1981,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 /// Divides a list of general trait bounds into two groups: auto traits (e.g., Sync and Send) and
 /// the remaining general trait bounds.
 fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                         trait_bounds: &'b [hir::PolyTraitRef])
-    -> (Vec<DefId>, Vec<&'b hir::PolyTraitRef>)
+                                         trait_bounds: &'b [hir::PolyTraitRef<'gcx>])
+    -> (Vec<DefId>, Vec<&'b hir::PolyTraitRef<'gcx>>)
 {
     let (auto_traits, trait_bounds): (Vec<_>, _) = trait_bounds.iter().partition(|bound| {
         // Checks whether `trait_did` is an auto trait and adds it to `auto_traits` if so.
@@ -1986,7 +1994,7 @@ fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         }
     });
 
-    let auto_traits = auto_traits.into_iter().map(|tr| {
+    let auto_traits = auto_traits.into_iter().map(|tr: &'b hir::PolyTraitRef<'gcx>| {
         if let Def::Trait(trait_did) = tr.trait_ref.path.def {
             trait_did
         } else {

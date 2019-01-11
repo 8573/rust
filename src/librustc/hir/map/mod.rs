@@ -49,7 +49,7 @@ impl<'hir> Entry<'hir> {
         }
     }
 
-    fn fn_decl(&self) -> Option<&FnDecl> {
+    fn fn_decl(&self) -> Option<&FnDecl<'hir>> {
         match self.node {
             Node::Item(ref item) => {
                 match item.node {
@@ -132,28 +132,28 @@ impl<'hir> Entry<'hir> {
 }
 
 /// Stores a crate and any number of inlined items from other crates.
-pub struct Forest {
-    krate: Crate,
+pub struct Forest<'hir> {
+    krate: Crate<'hir>,
     pub dep_graph: DepGraph,
 }
 
-impl Forest {
-    pub fn new(krate: Crate, dep_graph: &DepGraph) -> Forest {
+impl<'hir> Forest<'hir> {
+    pub fn new(krate: Crate<'hir>, dep_graph: &DepGraph) -> Forest<'hir> {
         Forest {
             krate,
             dep_graph: dep_graph.clone(),
         }
     }
 
-    pub fn krate<'hir>(&'hir self) -> &'hir Crate {
+    pub fn krate(&'hir self) -> &'hir Crate<'hir> {
         self.dep_graph.read(DepNode::new_no_params(DepKind::Krate));
         &self.krate
     }
 
-    /// This is internally in the depedency tracking system.
+    /// This is internally in the dependency tracking system.
     /// Use the `krate` method to ensure your dependency on the
     /// crate is tracked.
-    pub fn untracked_krate<'hir>(&'hir self) -> &'hir Crate {
+    pub fn untracked_krate(&'hir self) -> &'hir Crate<'hir> {
         &self.krate
     }
 }
@@ -163,7 +163,7 @@ impl Forest {
 #[derive(Clone)]
 pub struct Map<'hir> {
     /// The backing storage for all the AST nodes.
-    pub forest: &'hir Forest,
+    pub forest: &'hir Forest<'hir>,
 
     /// Same as the dep_graph in forest, just available with one fewer
     /// deref. This is a gratuitous micro-optimization.
@@ -375,7 +375,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate()
     }
 
-    pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem {
+    pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
         self.read(id.node_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
@@ -383,7 +383,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate.trait_item(id)
     }
 
-    pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem {
+    pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
         self.read(id.node_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
@@ -391,7 +391,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate.impl_item(id)
     }
 
-    pub fn body(&self, id: BodyId) -> &'hir Body {
+    pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.read(id.node_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
@@ -399,7 +399,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate.body(id)
     }
 
-    pub fn fn_decl(&self, node_id: ast::NodeId) -> Option<FnDecl> {
+    pub fn fn_decl(&self, node_id: ast::NodeId) -> Option<FnDecl<'hir>> {
         if let Some(entry) = self.find_entry(node_id) {
             entry.fn_decl().cloned()
         } else {
@@ -517,7 +517,7 @@ impl<'hir> Map<'hir> {
         self.as_local_node_id(id).map(|id| self.get(id)) // read recorded by `get`
     }
 
-    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
+    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
         self.get_if_local(id).and_then(|node| {
             match node {
                 Node::ImplItem(ref impl_item) => Some(&impl_item.generics),
@@ -754,28 +754,28 @@ impl<'hir> Map<'hir> {
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
     }
 
-    pub fn expect_item(&self, id: NodeId) -> &'hir Item {
+    pub fn expect_item(&self, id: NodeId) -> &'hir Item<'hir> {
         match self.find(id) { // read recorded by `find`
             Some(Node::Item(item)) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id))
         }
     }
 
-    pub fn expect_impl_item(&self, id: NodeId) -> &'hir ImplItem {
+    pub fn expect_impl_item(&self, id: NodeId) -> &'hir ImplItem<'hir> {
         match self.find(id) {
             Some(Node::ImplItem(item)) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(id))
         }
     }
 
-    pub fn expect_trait_item(&self, id: NodeId) -> &'hir TraitItem {
+    pub fn expect_trait_item(&self, id: NodeId) -> &'hir TraitItem<'hir> {
         match self.find(id) {
             Some(Node::TraitItem(item)) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(id))
         }
     }
 
-    pub fn expect_variant_data(&self, id: NodeId) -> &'hir VariantData {
+    pub fn expect_variant_data(&self, id: NodeId) -> &'hir VariantData<'hir> {
         match self.find(id) {
             Some(Node::Item(i)) => {
                 match i.node {
@@ -790,21 +790,21 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant(&self, id: NodeId) -> &'hir Variant {
+    pub fn expect_variant(&self, id: NodeId) -> &'hir Variant<'hir> {
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,
             _ => bug!("expected variant, found {}", self.node_to_string(id)),
         }
     }
 
-    pub fn expect_foreign_item(&self, id: NodeId) -> &'hir ForeignItem {
+    pub fn expect_foreign_item(&self, id: NodeId) -> &'hir ForeignItem<'hir> {
         match self.find(id) {
             Some(Node::ForeignItem(item)) => item,
             _ => bug!("expected foreign item, found {}", self.node_to_string(id))
         }
     }
 
-    pub fn expect_expr(&self, id: NodeId) -> &'hir Expr {
+    pub fn expect_expr(&self, id: NodeId) -> &'hir Expr<'hir> {
         match self.find(id) { // read recorded by find
             Some(Node::Expr(expr)) => expr,
             _ => bug!("expected expr, found {}", self.node_to_string(id))
@@ -839,7 +839,7 @@ impl<'hir> Map<'hir> {
             Some(Node::ImplItem(ref ii)) => Some(&ii.attrs[..]),
             Some(Node::Variant(ref v)) => Some(&v.node.attrs[..]),
             Some(Node::Field(ref f)) => Some(&f.attrs[..]),
-            Some(Node::Expr(ref e)) => Some(&*e.attrs),
+            Some(Node::Expr(ref e)) => Some(&****e.attrs),
             Some(Node::Stmt(ref s)) => Some(s.node.attrs()),
             Some(Node::GenericParam(param)) => Some(&param.attrs[..]),
             // unit/tuple structs take the attributes straight from
@@ -1010,12 +1010,12 @@ trait Named {
 
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
-impl Named for Item { fn name(&self) -> Name { self.ident.name } }
-impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
-impl Named for VariantKind { fn name(&self) -> Name { self.ident.name } }
-impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
-impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
-impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for Item<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for ForeignItem<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for VariantKind<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for StructField<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for TraitItem<'_> { fn name(&self) -> Name { self.ident.name } }
+impl Named for ImplItem<'_> { fn name(&self) -> Name { self.ident.name } }
 
 pub fn map_crate<'hir>(sess: &::session::Session,
                        cstore: &dyn CrateStore,

@@ -15,7 +15,7 @@ use rustc_target::abi::HasDataLayout;
 
 /// Used by `check_bounds` to indicate whether the pointer needs to be just inbounds
 /// or also inbounds of a *live* allocation.
-#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InboundsCheck {
     Live,
     MaybeDead,

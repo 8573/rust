@@ -18,6 +18,7 @@ use rustc::util::common::ErrorReported;
 
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
+use rustc::hir::ptr::P;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind};
 
@@ -25,7 +26,6 @@ use smallvec::smallvec;
 use std::slice;
 
 use syntax::ast;
-use syntax::ptr::P;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 
 struct OuterVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
@@ -161,8 +161,8 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
     fn check_match(
         &self,
-        scrut: &hir::Expr,
-        arms: &'tcx [hir::Arm],
+        scrut: &hir::Expr<'_>,
+        arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource)
     {
         for arm in arms {
@@ -197,10 +197,10 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                         patcx.report_inlining_errors(pat.span);
                         have_errors = true;
                     }
-                    (pattern, &**pat)
+                    (pattern, &***pat)
                 }).collect(),
                 arm.guard.as_ref().map(|g| match g {
-                    hir::Guard::If(ref e) => &**e,
+                    hir::Guard::If(ref e) => &***e,
                 })
             )).collect();
 
@@ -546,7 +546,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
                         ty::BindByValue(..) => {
                             let pat_ty = cx.tables.node_id_to_type(p.hir_id);
                             if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
-                                check_move(p, sub.as_ref().map(|p| &**p), span_vec);
+                                check_move(p, sub.as_ref().map(|p| &***p), span_vec);
                             }
                         }
                         _ => {}

@@ -1,11 +1,11 @@
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::{self, HirId};
+use rustc::hir::ptr::P;
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::ty;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use errors::Applicability;
 use std::slice;
-use syntax::ptr::P;
 
 use borrowck::BorrowckCtxt;
 

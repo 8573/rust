@@ -79,7 +79,7 @@ struct WritebackCx<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
 
     tables: ty::TypeckTables<'gcx>,
 
-    body: &'gcx hir::Body,
+    body: &'gcx hir::Body<'gcx>,
 
     rustc_dump_user_substs: bool,
 }
@@ -734,7 +734,7 @@ struct Resolver<'cx, 'gcx: 'cx + 'tcx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     span: &'cx dyn Locatable,
-    body: &'gcx hir::Body,
+    body: &'gcx hir::Body<'gcx>,
 }
 
 impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
