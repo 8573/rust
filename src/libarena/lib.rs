@@ -27,6 +27,7 @@ extern crate smallvec;
 extern crate rustc_data_structures;
 
 use rustc_data_structures::sync::MTLock;
+#[allow(unused_imports)]
 use smallvec::SmallVec;
 
 use std::cell::{Cell, RefCell};
@@ -194,6 +195,7 @@ impl<T> TypedArena<T> {
         }
     }
 
+    #[allow(unreachable_code)]
     pub fn alloc_from_iter<I: IntoIterator<Item=T>>(&self, iter: I) -> &[T] where T: Clone {
         assert!(mem::size_of::<T>() != 0);
         let vec: Vec<_> = iter.into_iter().collect();
